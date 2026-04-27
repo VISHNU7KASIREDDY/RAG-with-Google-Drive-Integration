@@ -148,7 +148,13 @@ def _get_db():
 
 def init_db():
     conn = _get_db()
-    conn.execute("DROP TABLE IF EXISTS documents")
+    cursor = conn.execute("PRAGMA table_info(documents)")
+    columns = [row[1] for row in cursor.fetchall()]
+
+    if columns and "session_id" not in columns:
+        conn.execute("DROP TABLE documents")
+        logger.info("Migrated old documents table to multi-tenant schema")
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS documents (
             id TEXT, session_id TEXT, file_name TEXT NOT NULL, mime_type TEXT,
