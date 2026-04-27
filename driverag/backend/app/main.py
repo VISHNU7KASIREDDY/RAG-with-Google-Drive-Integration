@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     app.state.vector_store = VectorStore(embedding_service)
     app.state.processing_service = processing_service
 
-    logger.info(f"LLM: {settings.llm_provider} | Embeddings: {settings.embedding_model} | Vectors: {app.state.vector_store.total_vectors}")
+    logger.info(f"LLM: {settings.llm_provider} | Embeddings: {settings.embedding_model}")
     yield
     logger.info("Shutting down")
 
@@ -34,7 +34,7 @@ app = FastAPI(title="DriveRAG API", version="1.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+    allow_credentials=False, allow_methods=["*"], allow_headers=["*"],
 )
 
 from app.api.routes import router

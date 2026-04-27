@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { MessageSquare, FileText, Sparkles, Database, Layers, CloudOff, CloudCog } from 'lucide-react';
 import SyncButton from './SyncButton';
 import type { Stats } from '../types';
-import { getStats, getAuthStatus } from '../api/client';
+import { getStats, getAuthStatus, SESSION_ID } from '../api/client';
 
 export default function Sidebar() {
   const [stats, setStats] = useState<Stats>({ total_docs: 0, total_chunks: 0, last_sync_time: null });
@@ -34,7 +34,7 @@ export default function Sidebar() {
 
   const handleConnect = () => {
     const apiBase = import.meta.env.VITE_API_URL || '';
-    window.location.href = `${apiBase}/api/auth/google`;
+    window.location.href = `${apiBase}/api/auth/google?session_id=${SESSION_ID}`;
   };
 
   return (
