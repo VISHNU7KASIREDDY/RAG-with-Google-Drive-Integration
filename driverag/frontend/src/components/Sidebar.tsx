@@ -14,7 +14,7 @@ export default function Sidebar() {
   };
 
   const checkAuth = async () => {
-    try { setConnected((await getAuthStatus()).connected); } catch { /* */ }
+    try { setConnected((await getAuthStatus()).connected); } catch { setConnected(false); }
   };
 
   useEffect(() => {
