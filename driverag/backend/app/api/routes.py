@@ -1,5 +1,8 @@
+import threading
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import RedirectResponse
+from app.core.config import settings
 from app.models.schemas import (
     SyncRequest, SyncResponse, AskRequest, AskResponse, Source,
     DocumentResponse, StatsResponse, DeleteResponse,
@@ -16,8 +19,6 @@ def _app():
     return app
 
 
-# ── Auth ──────────────────────────────────────────────────
-
 @router.get("/auth/google")
 async def auth_google():
     url = drive_service.get_auth_url()
@@ -28,10 +29,10 @@ async def auth_google():
 async def auth_callback(code: str):
     try:
         drive_service.handle_callback(code)
-        return RedirectResponse("http://localhost:5173/?auth=success")
+        return RedirectResponse(f"{settings.frontend_url}/?auth=success")
     except Exception as e:
         logger.error(f"Auth callback error: {e}")
-        return RedirectResponse(f"http://localhost:5173/?auth=error&message={str(e)[:100]}")
+        return RedirectResponse(f"{settings.frontend_url}/?auth=error&message={str(e)[:100]}")
 
 
 @router.get("/auth/status")
@@ -41,14 +42,11 @@ async def auth_status():
     return {"connected": connected}
 
 
-# ── Sync ──────────────────────────────────────────────────
-
 @router.post("/sync-drive")
 async def sync_drive(request: SyncRequest):
     if drive_service.sync_state["is_syncing"]:
         raise HTTPException(status_code=409, detail="Sync already in progress.")
     try:
-        import threading
         state = _app().state
 
         def run_sync():
@@ -71,8 +69,6 @@ async def sync_status():
     return drive_service.sync_state
 
 
-# ── Ask ───────────────────────────────────────────────────
-
 @router.post("/ask", response_model=AskResponse)
 async def ask_question(request: AskRequest):
     query = request.query.strip()
@@ -94,8 +90,6 @@ async def ask_question(request: AskRequest):
         logger.error(f"Ask error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate answer: {str(e)[:200]}")
 
-
-# ── Documents ─────────────────────────────────────────────
 
 @router.get("/documents", response_model=list[DocumentResponse])
 async def list_documents():

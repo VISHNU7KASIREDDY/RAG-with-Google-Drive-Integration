@@ -1,9 +1,3 @@
-/**
- * DriveRAG — App Root
- *
- * Sets up React Router with layout, chat, and documents pages.
- */
-
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Chat from './pages/Chat';

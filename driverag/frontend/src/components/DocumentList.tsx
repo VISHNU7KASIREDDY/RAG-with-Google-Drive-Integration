@@ -1,7 +1,3 @@
-/**
- * DriveRAG — DocumentList Component
- */
-
 import { useState } from 'react';
 import { FileText, FileType, File, Trash2, Search, AlertTriangle } from 'lucide-react';
 import type { Document } from '../types';
@@ -41,7 +37,6 @@ export default function DocumentList({ documents, onDelete }: DocumentListProps)
 
   return (
     <div id="document-list">
-      {/* Search */}
       <div style={{ position: 'relative', marginBottom: 16 }}>
         <Search size={15} color="#6b7280" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
         <input
@@ -55,7 +50,6 @@ export default function DocumentList({ documents, onDelete }: DocumentListProps)
         />
       </div>
 
-      {/* Table or empty */}
       {filtered.length === 0 ? (
         <div className="anim-fade-up" style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',

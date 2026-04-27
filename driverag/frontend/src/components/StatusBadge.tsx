@@ -1,7 +1,3 @@
-/**
- * DriveRAG — StatusBadge Component
- */
-
 import { CheckCircle, Clock, Loader2, AlertCircle } from 'lucide-react';
 
 interface StatusBadgeProps {

@@ -24,7 +24,6 @@ export default function Sidebar() {
     return () => clearInterval(interval);
   }, []);
 
-  // Check URL params for auth callback
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('auth') === 'success') {
@@ -34,12 +33,12 @@ export default function Sidebar() {
   }, []);
 
   const handleConnect = () => {
-    window.location.href = '/api/auth/google';
+    const apiBase = import.meta.env.VITE_API_URL || '';
+    window.location.href = `${apiBase}/api/auth/google`;
   };
 
   return (
     <aside className="app-sidebar" id="sidebar">
-      {/* Logo */}
       <div style={{ padding: '20px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{
@@ -61,7 +60,6 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Connect Google Drive */}
       <div style={{ padding: '16px 12px 8px' }}>
         {connected === false ? (
           <button
@@ -91,7 +89,6 @@ export default function Sidebar() {
         ) : null}
       </div>
 
-      {/* Nav */}
       <nav style={{ flex: 1, padding: '8px 12px', display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
         <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} id="nav-chat">
           <MessageSquare size={18} /> Chat
@@ -101,12 +98,10 @@ export default function Sidebar() {
         </NavLink>
       </nav>
 
-      {/* Sync */}
       <div style={{ padding: '0 12px 12px' }}>
         <SyncButton onSyncComplete={fetchStats} />
       </div>
 
-      {/* Stats */}
       <div style={{ padding: '0 12px 16px' }}>
         <div className="card-sm" style={{ padding: '14px 16px' }}>
           <p style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 10 }}>

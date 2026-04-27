@@ -1,21 +1,13 @@
-/**
- * DriveRAG — Axios API Client
- *
- * Centralized HTTP client for all backend API calls.
- */
-
 import axios from 'axios';
 import type { SyncResponse, AskResponse, Document, Stats, DeleteResponse } from '../types';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
-  timeout: 120000, // 2 minutes for sync operations
+  baseURL: `${import.meta.env.VITE_API_URL || ''}/api`,
+  timeout: 120000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
-// ─── Response interceptor for error handling ─────────────
 
 api.interceptors.response.use(
   (response) => response,
@@ -30,8 +22,6 @@ api.interceptors.response.use(
     return Promise.reject(new Error(message));
   }
 );
-
-// ─── Drive Sync ──────────────────────────────────────────
 
 export async function syncDrive(forceResync = false): Promise<SyncResponse> {
   const { data } = await api.post<SyncResponse>('/sync-drive', {
@@ -50,8 +40,6 @@ export async function getSyncStatus(): Promise<{
   return data;
 }
 
-// ─── Query ───────────────────────────────────────────────
-
 export async function askQuestion(
   query: string,
   topK = 5
@@ -62,8 +50,6 @@ export async function askQuestion(
   });
   return data;
 }
-
-// ─── Documents ───────────────────────────────────────────
 
 export async function getDocuments(): Promise<Document[]> {
   const { data } = await api.get<Document[]>('/documents');

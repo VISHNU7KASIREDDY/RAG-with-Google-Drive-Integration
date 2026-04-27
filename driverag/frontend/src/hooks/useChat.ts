@@ -1,9 +1,3 @@
-/**
- * DriveRAG — Chat Hook
- *
- * Manages chat state: message history, sending queries, and loading states.
- */
-
 import { useState, useCallback, useRef } from 'react';
 import type { Message } from '../types';
 import { askQuestion } from '../api/client';
@@ -24,7 +18,6 @@ export function useChat() {
     setError(null);
     abortRef.current = false;
 
-    // Add user message
     const userMessage: Message = {
       id: generateId(),
       role: 'user',
@@ -32,7 +25,6 @@ export function useChat() {
       timestamp: new Date(),
     };
 
-    // Add loading placeholder for assistant
     const loadingMessage: Message = {
       id: generateId(),
       role: 'assistant',
@@ -49,7 +41,6 @@ export function useChat() {
 
       if (abortRef.current) return;
 
-      // Replace loading message with actual response
       const assistantMessage: Message = {
         id: loadingMessage.id,
         role: 'assistant',
@@ -68,11 +59,10 @@ export function useChat() {
       const errorMsg = err instanceof Error ? err.message : 'Failed to get answer';
       setError(errorMsg);
 
-      // Replace loading message with error
       const errorMessage: Message = {
         id: loadingMessage.id,
         role: 'assistant',
-        content: `⚠️ ${errorMsg}`,
+        content: `Error: ${errorMsg}`,
         timestamp: new Date(),
         isLoading: false,
       };
@@ -95,7 +85,6 @@ export function useChat() {
   const retryLast = useCallback(() => {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
     if (lastUserMsg) {
-      // Remove the last assistant (error) message
       setMessages((prev) => prev.slice(0, -1));
       sendMessage(lastUserMsg.content);
     }

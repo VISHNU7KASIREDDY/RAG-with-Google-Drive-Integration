@@ -1,6 +1,5 @@
 import os
 import io
-import json
 import sqlite3
 from datetime import datetime, timezone
 from typing import Optional
@@ -27,8 +26,6 @@ TOKEN_FILE = "./data/token.json"
 sync_state = {"is_syncing": False, "current_file": None, "files_processed": 0, "total_files": 0}
 
 
-# ── Google Drive OAuth (Web Application) ────────────────────
-
 def _get_oauth_config():
     return {
         "web": {
@@ -41,24 +38,22 @@ def _get_oauth_config():
     }
 
 
-_pending_flow = None
+def _create_flow() -> Flow:
+    flow = Flow.from_client_config(_get_oauth_config(), scopes=SCOPES)
+    flow.redirect_uri = settings.google_redirect_uri
+    return flow
 
 
 def get_auth_url() -> str:
-    global _pending_flow
-    _pending_flow = Flow.from_client_config(_get_oauth_config(), scopes=SCOPES)
-    _pending_flow.redirect_uri = settings.google_redirect_uri
-    auth_url, _ = _pending_flow.authorization_url(access_type="offline", prompt="consent")
+    flow = _create_flow()
+    auth_url, _ = flow.authorization_url(access_type="offline", prompt="consent")
     return auth_url
 
 
 def handle_callback(code: str) -> dict:
-    global _pending_flow
-    if _pending_flow is None:
-        raise ValueError("No pending auth flow. Start at /api/auth/google first.")
-    _pending_flow.fetch_token(code=code)
-    creds = _pending_flow.credentials
-    _pending_flow = None
+    flow = _create_flow()
+    flow.fetch_token(code=code)
+    creds = flow.credentials
 
     os.makedirs(os.path.dirname(os.path.abspath(TOKEN_FILE)), exist_ok=True)
     with open(TOKEN_FILE, "w") as f:
@@ -88,8 +83,6 @@ def authenticate():
     creds = _get_credentials()
     return build("drive", "v3", credentials=creds)
 
-
-# ── Google Drive File Operations ────────────────────────────
 
 def list_files(service) -> list[dict]:
     query = " or ".join(f"mimeType='{mt}'" for mt in SUPPORTED_MIME_TYPES)
@@ -127,8 +120,6 @@ def download_file(service, file_info: dict) -> Optional[bytes]:
         logger.error(f"Download failed for '{file_info.get('file_name')}': {e}")
         return None
 
-
-# ── SQLite ──────────────────────────────────────────────────
 
 def _get_db():
     os.makedirs(os.path.dirname(os.path.abspath(settings.database_url)), exist_ok=True)
@@ -177,7 +168,7 @@ def upsert_document(doc: dict):
     conn.close()
 
 
-def update_status(doc_id: str, status: str, chunk_count: int = None, error_message: str = None):
+def update_status(doc_id: str, status: str, chunk_count: Optional[int] = None, error_message: Optional[str] = None):
     conn = _get_db()
     now = datetime.now(timezone.utc).isoformat()
     if chunk_count is not None:
@@ -214,10 +205,7 @@ def get_stats() -> dict:
     return dict(row) if row else {"total_docs": 0, "total_chunks": 0, "last_sync_time": None}
 
 
-# ── Sync Pipeline ───────────────────────────────────────────
-
 def sync(processing_service, vector_store, force_resync: bool = False) -> dict:
-    global sync_state
     sync_state["is_syncing"] = True
     stats = {"total_files": 0, "new_files": 0, "updated_files": 0, "skipped_files": 0, "failed_files": 0}
 
@@ -266,10 +254,10 @@ def sync(processing_service, vector_store, force_resync: bool = False) -> dict:
                 vector_store.add_documents(docs, doc_id=file_id)
                 update_status(file_id, "indexed", chunk_count=len(docs))
                 stats["updated_files" if is_update else "new_files"] += 1
-                logger.info(f"✓ Indexed '{file_name}' ({len(docs)} chunks)")
+                logger.info(f"Indexed '{file_name}' ({len(docs)} chunks)")
 
             except Exception as e:
-                logger.error(f"✗ Failed '{file_name}': {e}")
+                logger.error(f"Failed to process '{file_name}': {e}")
                 try:
                     update_status(file_id, "failed", error_message=str(e)[:500])
                 except Exception:

@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("🚀 Starting DriveRAG API...")
+    logger.info("Starting DriveRAG API")
 
     from app.services.drive_service import init_db
     from app.services.embedding_service import EmbeddingService
@@ -24,9 +24,9 @@ async def lifespan(app: FastAPI):
     app.state.vector_store = VectorStore(embedding_service)
     app.state.processing_service = processing_service
 
-    logger.info(f"✓ LLM: {settings.llm_provider} | Embeddings: {settings.embedding_model} | Vectors: {app.state.vector_store.total_vectors}")
+    logger.info(f"LLM: {settings.llm_provider} | Embeddings: {settings.embedding_model} | Vectors: {app.state.vector_store.total_vectors}")
     yield
-    logger.info("👋 Shutting down...")
+    logger.info("Shutting down")
 
 
 app = FastAPI(title="DriveRAG API", version="1.0.0", lifespan=lifespan)

@@ -1,7 +1,3 @@
-/**
- * DriveRAG — Documents Page
- */
-
 import { Database, Layers, Clock, RefreshCw } from 'lucide-react';
 import { useDocuments } from '../hooks/useDocuments';
 import DocumentList from '../components/DocumentList';
@@ -22,7 +18,6 @@ export default function Documents() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }} id="documents-page">
-      {/* Header */}
       <div className="page-header">
         <h2 style={{ fontSize: 14, fontWeight: 600, color: '#d1d5db' }}>Documents</h2>
         <button onClick={refresh} className="btn-ghost" style={{ fontSize: 12 }}>
@@ -30,7 +25,6 @@ export default function Documents() {
         </button>
       </div>
 
-      {/* Stats */}
       <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, maxWidth: 680 }}>
           {statCards.map(({ icon: Icon, color, label, value, small }, i) => (
@@ -56,7 +50,6 @@ export default function Documents() {
         </div>
       </div>
 
-      {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
         {isLoading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

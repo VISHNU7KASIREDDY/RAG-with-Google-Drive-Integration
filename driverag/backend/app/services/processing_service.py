@@ -48,5 +48,5 @@ def chunk_text(text: str, doc_id: str, file_name: str) -> list[Document]:
     for i, doc in enumerate(docs):
         doc.metadata["chunk_index"] = i
 
-    logger.info(f"Chunked '{file_name}' → {len(docs)} chunks")
+    logger.info(f"Chunked '{file_name}' into {len(docs)} chunks")
     return docs

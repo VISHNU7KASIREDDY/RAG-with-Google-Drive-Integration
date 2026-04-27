@@ -1,9 +1,3 @@
-/**
- * DriveRAG — Documents Hook
- *
- * Manages document list fetching, stats, and deletion.
- */
-
 import { useState, useEffect, useCallback } from 'react';
 import type { Document, Stats } from '../types';
 import {
@@ -43,9 +37,7 @@ export function useDocuments() {
   const deleteDoc = useCallback(async (docId: string) => {
     try {
       await apiDeleteDocument(docId);
-      // Optimistically remove from local state
       setDocuments((prev) => prev.filter((d) => d.id !== docId));
-      // Refresh stats
       const docStats = await getStats();
       setStats(docStats);
     } catch (err) {

@@ -1,7 +1,3 @@
-/**
- * DriveRAG — Chat Page
- */
-
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import { Send, Sparkles, MessageSquareText, FileSearch, BookOpen } from 'lucide-react';
 import { useChat } from '../hooks/useChat';
@@ -38,7 +34,6 @@ export default function Chat() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }} id="chat-page">
-      {/* Header */}
       <div className="page-header">
         <h2 style={{ fontSize: 14, fontWeight: 600, color: '#d1d5db' }}>Chat</h2>
         {messages.length > 0 && (
@@ -48,7 +43,6 @@ export default function Chat() {
         )}
       </div>
 
-      {/* Empty state */}
       {empty ? (
         <div className="anim-fade-up" style={{
           flex: 1, display: 'flex', flexDirection: 'column',
@@ -95,7 +89,6 @@ export default function Chat() {
         <ChatWindow messages={messages} onRetry={retryLast} />
       )}
 
-      {/* Input bar */}
       <div style={{
         padding: '12px 20px 16px', borderTop: '1px solid rgba(255,255,255,0.04)',
         background: 'rgba(3,7,18,0.85)', backdropFilter: 'blur(8px)',
@@ -145,7 +138,7 @@ export default function Chat() {
           </div>
         </div>
         <p style={{ textAlign: 'center', fontSize: 10, color: '#374151', marginTop: 8 }}>
-          Shift+Enter for new line · DriveRAG searches your synced documents
+          Shift+Enter for new line
         </p>
       </div>
     </div>

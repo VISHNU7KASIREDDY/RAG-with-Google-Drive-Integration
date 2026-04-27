@@ -1,5 +1,3 @@
-/* ─── TypeScript Types for DriveRAG ────────────────────── */
-
 export interface Message {
   id: string;
   role: 'user' | 'assistant';

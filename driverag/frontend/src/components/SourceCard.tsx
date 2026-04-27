@@ -1,7 +1,3 @@
-/**
- * DriveRAG — SourceCard Component
- */
-
 import { useState } from 'react';
 import { FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Source } from '../types';

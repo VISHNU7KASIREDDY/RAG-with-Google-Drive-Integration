@@ -49,15 +49,15 @@ def answer_question(vector_store, query: str, top_k: int = None) -> tuple[str, l
     if not results:
         return "No relevant documents found. Please sync your Google Drive first.", []
 
-    logger.info(f"[RAG] Found {len(results)} chunks (top score: {results[0]['score']})")
+    logger.info(f"Found {len(results)} chunks (top score: {results[0]['score']})")
 
     context = "\n\n---\n\n".join(
         f"[Source {i}: {r['file_name']}]\n{r['chunk_text']}"
         for i, r in enumerate(results, 1)
     )
 
-    logger.info(f"[RAG] Calling {settings.llm_provider} LLM...")
+    logger.info(f"Calling {settings.llm_provider} LLM")
     response = _get_llm().invoke(PROMPT.format(context=context, question=query))
-    logger.info(f"[RAG] Answer generated ({len(response.content)} chars)")
+    logger.info(f"Answer generated ({len(response.content)} chars)")
 
     return response.content, results

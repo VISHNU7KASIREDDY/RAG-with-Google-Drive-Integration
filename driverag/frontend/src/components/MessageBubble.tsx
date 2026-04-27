@@ -1,7 +1,3 @@
-/**
- * DriveRAG — MessageBubble Component
- */
-
 import { useState } from 'react';
 import { Copy, Check, User, Bot, RotateCcw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -18,7 +14,7 @@ export default function MessageBubble({ message, onRetry }: MessageBubbleProps) 
   const [copied, setCopied] = useState(false);
   const [showSources, setShowSources] = useState(true);
   const isUser = message.role === 'user';
-  const isError = message.content.startsWith('⚠️');
+  const isError = message.content.startsWith('Error:');
 
   const handleCopy = async () => {
     try {
@@ -40,7 +36,6 @@ export default function MessageBubble({ message, onRetry }: MessageBubbleProps) 
       }}
       id={`message-${message.id}`}
     >
-      {/* Avatar */}
       <div style={{
         width: 34, height: 34, borderRadius: 11, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -50,12 +45,10 @@ export default function MessageBubble({ message, onRetry }: MessageBubbleProps) 
         {isUser ? <User size={15} color="#818cf8" /> : <Bot size={15} color="#d1d5db" />}
       </div>
 
-      {/* Content column */}
       <div style={{
         display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0,
         alignItems: isUser ? 'flex-end' : 'flex-start',
       }}>
-        {/* Bubble */}
         <div className={isUser ? 'bubble-user' : isError ? 'bubble-error' : 'bubble-assistant'}>
           {message.isLoading ? (
             <div className="typing-dots"><span /><span /><span /></div>
@@ -68,7 +61,6 @@ export default function MessageBubble({ message, onRetry }: MessageBubbleProps) 
           )}
         </div>
 
-        {/* Actions row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 4, paddingRight: 4 }}>
           <span style={{ fontSize: 10, color: '#4b5563' }}>{time}</span>
 
@@ -88,7 +80,6 @@ export default function MessageBubble({ message, onRetry }: MessageBubbleProps) 
           )}
         </div>
 
-        {/* Sources */}
         {!isUser && message.sources && message.sources.length > 0 && (
           <div style={{ width: '100%', marginTop: 2 }}>
             <button
@@ -99,7 +90,7 @@ export default function MessageBubble({ message, onRetry }: MessageBubbleProps) 
               }}
               id="toggle-sources-btn"
             >
-              📎 {message.sources.length} source{message.sources.length !== 1 ? 's' : ''}
+              {message.sources.length} source{message.sources.length !== 1 ? 's' : ''}
               <span style={{ fontSize: 9 }}>{showSources ? '▾' : '▸'}</span>
             </button>
             {showSources && (

@@ -1,7 +1,3 @@
-/**
- * DriveRAG — ChatWindow Component
- */
-
 import { useEffect, useRef } from 'react';
 import type { Message } from '../types';
 import MessageBubble from './MessageBubble';
@@ -30,7 +26,7 @@ export default function ChatWindow({ messages, onRetry }: ChatWindowProps) {
         <MessageBubble
           key={msg.id}
           message={msg}
-          onRetry={msg.content.startsWith('⚠️') && i === messages.length - 1 ? onRetry : undefined}
+          onRetry={msg.content.startsWith('Error:') && i === messages.length - 1 ? onRetry : undefined}
         />
       ))}
       <div ref={bottomRef} />
