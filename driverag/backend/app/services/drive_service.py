@@ -50,15 +50,21 @@ def _create_flow() -> Flow:
     return flow
 
 
+_pending_verifiers: dict[str, str] = {}
+
+
 def get_auth_url(session_id: str) -> str:
     flow = _create_flow()
     auth_url, _ = flow.authorization_url(access_type="offline", prompt="consent", state=session_id)
+    if hasattr(flow, 'code_verifier') and flow.code_verifier:
+        _pending_verifiers[session_id] = flow.code_verifier
     return auth_url
 
 
 def handle_callback(code: str, state: str) -> dict:
     flow = _create_flow()
-    flow.fetch_token(code=code)
+    code_verifier = _pending_verifiers.pop(state, None)
+    flow.fetch_token(code=code, code_verifier=code_verifier)
     creds = flow.credentials
 
     token_file = _get_token_file(state)

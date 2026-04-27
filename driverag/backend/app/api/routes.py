@@ -25,6 +25,13 @@ def _app():
     return app
 
 
+def _frontend_url():
+    url = settings.frontend_url
+    if url and not url.startswith("http"):
+        url = f"https://{url}"
+    return url.rstrip("/")
+
+
 @router.get("/auth/google")
 async def auth_google(session_id: str):
     url = drive_service.get_auth_url(session_id)
@@ -35,10 +42,10 @@ async def auth_google(session_id: str):
 async def auth_callback(code: str, state: str):
     try:
         drive_service.handle_callback(code, state)
-        return RedirectResponse(f"{settings.frontend_url}/?auth=success")
+        return RedirectResponse(f"{_frontend_url()}/?auth=success")
     except Exception as e:
         logger.error(f"Auth callback error: {e}")
-        return RedirectResponse(f"{settings.frontend_url}/?auth=error&message={str(e)[:100]}")
+        return RedirectResponse(f"{_frontend_url()}/?auth=error&message={str(e)[:100]}")
 
 
 @router.get("/auth/status")
