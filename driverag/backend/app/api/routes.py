@@ -54,6 +54,12 @@ async def auth_status(session_id: str = Depends(get_session_id)):
     return {"connected": connected}
 
 
+@router.post("/auth/disconnect")
+async def auth_disconnect(session_id: str = Depends(get_session_id)):
+    drive_service.disconnect(session_id)
+    return {"message": "Disconnected from Google Drive"}
+
+
 @router.post("/sync-drive")
 async def sync_drive(request: SyncRequest, session_id: str = Depends(get_session_id)):
     state = drive_service.get_sync_state(session_id)

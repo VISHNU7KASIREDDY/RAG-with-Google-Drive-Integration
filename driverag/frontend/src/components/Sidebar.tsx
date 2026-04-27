@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { MessageSquare, FileText, Sparkles, Database, Layers, CloudOff, CloudCog } from 'lucide-react';
+import { MessageSquare, FileText, Sparkles, Database, Layers, CloudOff, CloudCog, LogOut } from 'lucide-react';
 import SyncButton from './SyncButton';
 import type { Stats } from '../types';
-import { getStats, getAuthStatus, SESSION_ID } from '../api/client';
+import { getStats, getAuthStatus, disconnectDrive, SESSION_ID } from '../api/client';
 
 export default function Sidebar() {
   const [stats, setStats] = useState<Stats>({ total_docs: 0, total_chunks: 0, last_sync_time: null });
@@ -35,6 +35,13 @@ export default function Sidebar() {
   const handleConnect = () => {
     const apiBase = import.meta.env.VITE_API_URL || '';
     window.location.href = `${apiBase}/api/auth/google?session_id=${SESSION_ID}`;
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      await disconnectDrive();
+      setConnected(false);
+    } catch { /* */ }
   };
 
   return (
@@ -84,7 +91,21 @@ export default function Sidebar() {
             display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#34a853', fontWeight: 500,
           }}>
             <CloudCog size={15} />
-            Google Drive Connected
+            <span style={{ flex: 1 }}>Drive Connected</span>
+            <button
+              onClick={handleDisconnect}
+              id="disconnect-drive-btn"
+              title="Disconnect and switch account"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                color: '#9ca3af', display: 'flex', alignItems: 'center',
+                transition: 'color 0.15s',
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.color = '#f87171')}
+              onMouseOut={(e) => (e.currentTarget.style.color = '#9ca3af')}
+            >
+              <LogOut size={14} />
+            </button>
           </div>
         ) : null}
       </div>

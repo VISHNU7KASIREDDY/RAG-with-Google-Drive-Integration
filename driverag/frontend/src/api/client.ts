@@ -85,4 +85,9 @@ export async function getAuthStatus(): Promise<{ connected: boolean }> {
   return data;
 }
 
+export async function disconnectDrive(): Promise<{ message: string }> {
+  const { data } = await api.post<{ message: string }>('/auth/disconnect');
+  return data;
+}
+
 export default api;

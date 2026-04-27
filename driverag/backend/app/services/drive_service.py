@@ -79,6 +79,13 @@ def is_connected(session_id: str) -> bool:
     return os.path.exists(_get_token_file(session_id))
 
 
+def disconnect(session_id: str):
+    token_file = _get_token_file(session_id)
+    if os.path.exists(token_file):
+        os.remove(token_file)
+        logger.info(f"Disconnected session {session_id}")
+
+
 def _get_credentials(session_id: str) -> Credentials:
     token_file = _get_token_file(session_id)
     if not os.path.exists(token_file):
