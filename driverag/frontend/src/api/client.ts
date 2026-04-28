@@ -1,15 +1,11 @@
 import axios from 'axios';
 import type { SyncResponse, AskResponse, Document, Stats, DeleteResponse } from '../types';
 
-// Fixed demo session – every visitor shares the same pre-synced Drive data
-export const SESSION_ID = 'demo';
-
 const api = axios.create({
   baseURL: `${import.meta.env.VITE_API_URL || ''}/api`,
   timeout: 120000,
   headers: {
     'Content-Type': 'application/json',
-    'X-Session-ID': SESSION_ID,
   },
 });
 

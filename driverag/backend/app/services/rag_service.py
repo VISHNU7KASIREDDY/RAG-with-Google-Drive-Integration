@@ -42,10 +42,10 @@ def _get_llm():
         )
 
 
-def answer_question(session_id: str, vector_store, query: str, top_k: int = None) -> tuple[str, list[dict]]:
+def answer_question(vector_store, query: str, top_k: int = None) -> tuple[str, list[dict]]:
     top_k = top_k or settings.top_k_results
 
-    results = vector_store.similarity_search(session_id, query, k=top_k)
+    results = vector_store.similarity_search(query, k=top_k)
     if not results:
         return "No relevant documents found. Please sync your Google Drive first.", []
 

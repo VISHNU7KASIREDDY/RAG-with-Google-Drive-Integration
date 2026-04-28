@@ -13,54 +13,49 @@ class VectorStore:
 
     def __init__(self, embedding_service):
         self._embeddings = embedding_service.langchain_embeddings
-        self._stores: dict[str, FAISS] = {}
+        self._store: FAISS | None = None
 
-    def _get_path(self, session_id: str) -> str:
-        return f"{settings.faiss_store_path}_{session_id}"
+    def _get_store(self) -> FAISS:
+        if self._store is not None:
+            return self._store
 
-    def _get_store(self, session_id: str) -> FAISS:
-        if session_id in self._stores:
-            return self._stores[session_id]
-
-        path = self._get_path(session_id)
+        path = settings.faiss_store_path
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
 
         if os.path.exists(path):
             try:
-                store = FAISS.load_local(path, self._embeddings, allow_dangerous_deserialization=True)
-                self._stores[session_id] = store
-                logger.info(f"Loaded FAISS index for {session_id}: {store.index.ntotal} vectors")
-                return store
+                self._store = FAISS.load_local(path, self._embeddings, allow_dangerous_deserialization=True)
+                logger.info(f"Loaded FAISS index: {self._store.index.ntotal} vectors")
+                return self._store
             except Exception as e:
-                logger.warning(f"Failed to load index for {session_id}: {e}")
+                logger.warning(f"Failed to load index: {e}")
 
         index = faiss.IndexFlatL2(settings.embedding_dimension)
-        store = FAISS(
+        self._store = FAISS(
             embedding_function=self._embeddings, index=index,
             docstore=InMemoryDocstore(), index_to_docstore_id={},
         )
-        self._stores[session_id] = store
-        logger.info(f"Created new empty FAISS index for {session_id}")
-        return store
+        logger.info("Created new empty FAISS index")
+        return self._store
 
-    def _save(self, session_id: str):
-        if session_id in self._stores:
-            self._stores[session_id].save_local(self._get_path(session_id))
+    def _save(self):
+        if self._store is not None:
+            self._store.save_local(settings.faiss_store_path)
 
-    def get_total_vectors(self, session_id: str) -> int:
-        return self._get_store(session_id).index.ntotal
+    def get_total_vectors(self) -> int:
+        return self._get_store().index.ntotal
 
-    def add_documents(self, session_id: str, documents: list[Document], doc_id: str) -> int:
+    def add_documents(self, documents: list[Document], doc_id: str) -> int:
         if not documents:
             return 0
-        store = self._get_store(session_id)
+        store = self._get_store()
         ids = [f"{doc_id}_{d.metadata.get('chunk_index', i)}" for i, d in enumerate(documents)]
         store.add_documents(documents=documents, ids=ids)
-        self._save(session_id)
+        self._save()
         return len(documents)
 
-    def similarity_search(self, session_id: str, query: str, k: int = 5) -> list[dict]:
-        store = self._get_store(session_id)
+    def similarity_search(self, query: str, k: int = 5) -> list[dict]:
+        store = self._get_store()
         if store.index.ntotal == 0:
             return []
         k = min(k, store.index.ntotal)
@@ -76,10 +71,10 @@ class VectorStore:
             for doc, score in results
         ]
 
-    def delete_by_doc_id(self, session_id: str, doc_id: str) -> int:
-        store = self._get_store(session_id)
+    def delete_by_doc_id(self, doc_id: str) -> int:
+        store = self._get_store()
         ids = [sid for sid in store.index_to_docstore_id.values() if sid.startswith(f"{doc_id}_")]
         if ids:
             store.delete(ids=ids)
-            self._save(session_id)
+            self._save()
         return len(ids)

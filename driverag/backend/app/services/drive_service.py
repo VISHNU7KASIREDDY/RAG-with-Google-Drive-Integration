@@ -21,15 +21,14 @@ SUPPORTED_MIME_TYPES = [
     "application/vnd.google-apps.document",
     "text/plain",
 ]
-def _get_token_file(session_id: str) -> str:
-    return f"./data/tokens/{session_id}.json"
 
-_sync_states: dict[str, dict] = {}
+TOKEN_FILE = "./data/token.json"
 
-def get_sync_state(session_id: str) -> dict:
-    if session_id not in _sync_states:
-        _sync_states[session_id] = {"is_syncing": False, "current_file": None, "files_processed": 0, "total_files": 0}
-    return _sync_states[session_id]
+_sync_state: dict = {"is_syncing": False, "current_file": None, "files_processed": 0, "total_files": 0}
+
+
+def get_sync_state() -> dict:
+    return _sync_state
 
 
 def _get_oauth_config():
@@ -50,52 +49,52 @@ def _create_flow() -> Flow:
     return flow
 
 
-_pending_verifiers: dict[str, str] = {}
+_pending_verifier: Optional[str] = None
 
 
-def get_auth_url(session_id: str) -> str:
+def get_auth_url() -> str:
+    global _pending_verifier
     flow = _create_flow()
-    auth_url, _ = flow.authorization_url(access_type="offline", prompt="consent", state=session_id)
+    auth_url, _ = flow.authorization_url(access_type="offline", prompt="consent")
     if hasattr(flow, 'code_verifier') and flow.code_verifier:
-        _pending_verifiers[session_id] = flow.code_verifier
+        _pending_verifier = flow.code_verifier
     return auth_url
 
 
-def handle_callback(code: str, state: str) -> dict:
+def handle_callback(code: str) -> dict:
+    global _pending_verifier
     flow = _create_flow()
-    code_verifier = _pending_verifiers.pop(state, None)
+    code_verifier = _pending_verifier
+    _pending_verifier = None
     flow.fetch_token(code=code, code_verifier=code_verifier)
     creds = flow.credentials
 
-    token_file = _get_token_file(state)
-    os.makedirs(os.path.dirname(os.path.abspath(token_file)), exist_ok=True)
-    with open(token_file, "w") as f:
+    os.makedirs(os.path.dirname(os.path.abspath(TOKEN_FILE)), exist_ok=True)
+    with open(TOKEN_FILE, "w") as f:
         f.write(creds.to_json())
 
     return {"message": "Google Drive connected successfully"}
 
 
-def is_connected(session_id: str) -> bool:
-    return os.path.exists(_get_token_file(session_id))
+def is_connected() -> bool:
+    return os.path.exists(TOKEN_FILE)
 
 
-def disconnect(session_id: str):
-    token_file = _get_token_file(session_id)
-    if os.path.exists(token_file):
-        os.remove(token_file)
-        logger.info(f"Disconnected session {session_id}")
+def disconnect():
+    if os.path.exists(TOKEN_FILE):
+        os.remove(TOKEN_FILE)
+        logger.info("Disconnected from Google Drive")
 
 
-def _get_credentials(session_id: str) -> Credentials:
-    token_file = _get_token_file(session_id)
-    if not os.path.exists(token_file):
+def _get_credentials() -> Credentials:
+    if not os.path.exists(TOKEN_FILE):
         raise FileNotFoundError("Not authenticated. Visit /api/auth/google first.")
 
-    creds = Credentials.from_authorized_user_file(token_file, SCOPES)
+    creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
 
     if creds and creds.expired and creds.refresh_token:
         creds.refresh(Request())
-        with open(token_file, "w") as f:
+        with open(TOKEN_FILE, "w") as f:
             f.write(creds.to_json())
 
     if not creds or not creds.valid:
@@ -104,8 +103,8 @@ def _get_credentials(session_id: str) -> Credentials:
     return creds
 
 
-def authenticate(session_id: str):
-    creds = _get_credentials(session_id)
+def authenticate():
+    creds = _get_credentials()
     return build("drive", "v3", credentials=creds)
 
 
@@ -146,6 +145,8 @@ def download_file(service, file_info: dict) -> Optional[bytes]:
         return None
 
 
+# ── SQLite (single-user, no session_id) ──────────────────────────────────────
+
 def _get_db():
     os.makedirs(os.path.dirname(os.path.abspath(settings.database_url)), exist_ok=True)
     conn = sqlite3.connect(settings.database_url)
@@ -155,20 +156,24 @@ def _get_db():
 
 def init_db():
     conn = _get_db()
+    # Drop old multi-tenant table if it exists
     cursor = conn.execute("PRAGMA table_info(documents)")
     columns = [row[1] for row in cursor.fetchall()]
-
-    if columns and "session_id" not in columns:
+    if columns and "session_id" in columns:
         conn.execute("DROP TABLE documents")
-        logger.info("Migrated old documents table to multi-tenant schema")
+        logger.info("Migrated multi-tenant table to single-user schema")
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS documents (
-            id TEXT, session_id TEXT, file_name TEXT NOT NULL, mime_type TEXT,
-            status TEXT DEFAULT 'pending', chunk_count INTEGER DEFAULT 0,
-            last_synced TIMESTAMP, modified_time TEXT, error_message TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id, session_id)
+            id TEXT PRIMARY KEY,
+            file_name TEXT NOT NULL,
+            mime_type TEXT,
+            status TEXT DEFAULT 'pending',
+            chunk_count INTEGER DEFAULT 0,
+            last_synced TIMESTAMP,
+            modified_time TEXT,
+            error_message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     conn.commit()
@@ -176,132 +181,131 @@ def init_db():
     logger.info("Database initialized")
 
 
-def get_all_documents(session_id: str) -> list[dict]:
+def get_all_documents() -> list[dict]:
     conn = _get_db()
-    rows = conn.execute("SELECT * FROM documents WHERE session_id = ? ORDER BY last_synced DESC NULLS LAST", (session_id,)).fetchall()
+    rows = conn.execute("SELECT * FROM documents ORDER BY last_synced DESC NULLS LAST").fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
 
-def get_document(session_id: str, doc_id: str) -> Optional[dict]:
+def get_document(doc_id: str) -> Optional[dict]:
     conn = _get_db()
-    row = conn.execute("SELECT * FROM documents WHERE session_id = ? AND id = ?", (session_id, doc_id)).fetchone()
+    row = conn.execute("SELECT * FROM documents WHERE id = ?", (doc_id,)).fetchone()
     conn.close()
     return dict(row) if row else None
 
 
-def upsert_document(session_id: str, doc: dict):
+def upsert_document(doc: dict):
     conn = _get_db()
     conn.execute("""
-        INSERT INTO documents (id, session_id, file_name, mime_type, modified_time, status, created_at)
-        VALUES (?, ?, ?, ?, ?, 'pending', ?)
-        ON CONFLICT(id, session_id) DO UPDATE SET file_name=excluded.file_name, mime_type=excluded.mime_type, modified_time=excluded.modified_time
-    """, (doc["id"], session_id, doc["file_name"], doc.get("mime_type"), doc.get("modified_time"), datetime.now(timezone.utc).isoformat()))
+        INSERT INTO documents (id, file_name, mime_type, modified_time, status, created_at)
+        VALUES (?, ?, ?, ?, 'pending', ?)
+        ON CONFLICT(id) DO UPDATE SET file_name=excluded.file_name, mime_type=excluded.mime_type, modified_time=excluded.modified_time
+    """, (doc["id"], doc["file_name"], doc.get("mime_type"), doc.get("modified_time"), datetime.now(timezone.utc).isoformat()))
     conn.commit()
     conn.close()
 
 
-def update_status(session_id: str, doc_id: str, status: str, chunk_count: Optional[int] = None, error_message: Optional[str] = None):
+def update_status(doc_id: str, status: str, chunk_count: Optional[int] = None, error_message: Optional[str] = None):
     conn = _get_db()
     now = datetime.now(timezone.utc).isoformat()
     if chunk_count is not None:
-        conn.execute("UPDATE documents SET status=?, chunk_count=?, last_synced=?, error_message=? WHERE session_id=? AND id=?",
-                     (status, chunk_count, now, error_message, session_id, doc_id))
+        conn.execute("UPDATE documents SET status=?, chunk_count=?, last_synced=?, error_message=? WHERE id=?",
+                     (status, chunk_count, now, error_message, doc_id))
     else:
-        conn.execute("UPDATE documents SET status=?, last_synced=?, error_message=? WHERE session_id=? AND id=?",
-                     (status, now, error_message, session_id, doc_id))
+        conn.execute("UPDATE documents SET status=?, last_synced=?, error_message=? WHERE id=?",
+                     (status, now, error_message, doc_id))
     conn.commit()
     conn.close()
 
 
-def delete_document(session_id: str, doc_id: str):
+def delete_document(doc_id: str):
     conn = _get_db()
-    conn.execute("DELETE FROM documents WHERE session_id=? AND id=?", (session_id, doc_id))
+    conn.execute("DELETE FROM documents WHERE id=?", (doc_id,))
     conn.commit()
     conn.close()
 
 
-def document_needs_update(session_id: str, doc_id: str, modified_time: str) -> bool:
-    doc = get_document(session_id, doc_id)
+def document_needs_update(doc_id: str, modified_time: str) -> bool:
+    doc = get_document(doc_id)
     if doc is None or doc["status"] == "failed":
         return True
     return doc["modified_time"] != modified_time
 
 
-def get_stats(session_id: str) -> dict:
+def get_stats() -> dict:
     conn = _get_db()
     row = conn.execute("""
         SELECT COUNT(*) as total_docs, COALESCE(SUM(chunk_count), 0) as total_chunks,
-               MAX(last_synced) as last_sync_time FROM documents WHERE session_id=? AND status='indexed'
-    """, (session_id,)).fetchone()
+               MAX(last_synced) as last_sync_time FROM documents WHERE status='indexed'
+    """).fetchone()
     conn.close()
     return dict(row) if row else {"total_docs": 0, "total_chunks": 0, "last_sync_time": None}
 
 
-def sync(session_id: str, processing_service, vector_store, force_resync: bool = False) -> dict:
-    state = get_sync_state(session_id)
-    state["is_syncing"] = True
+def sync(processing_service, vector_store, force_resync: bool = False) -> dict:
+    _sync_state["is_syncing"] = True
     stats = {"total_files": 0, "new_files": 0, "updated_files": 0, "skipped_files": 0, "failed_files": 0}
 
     try:
-        service = authenticate(session_id)
+        service = authenticate()
         files = list_files(service)
         stats["total_files"] = len(files)
-        state["total_files"] = len(files)
+        _sync_state["total_files"] = len(files)
 
         for i, f in enumerate(files):
             file_id, file_name = f["file_id"], f["file_name"]
-            state["current_file"] = file_name
-            state["files_processed"] = i
+            _sync_state["current_file"] = file_name
+            _sync_state["files_processed"] = i
 
             try:
-                if not force_resync and not document_needs_update(session_id, file_id, f["modified_time"]):
+                if not force_resync and not document_needs_update(file_id, f["modified_time"]):
                     stats["skipped_files"] += 1
                     continue
 
-                existing = get_document(session_id, file_id)
+                existing = get_document(file_id)
                 is_update = existing is not None and existing["status"] == "indexed"
 
-                upsert_document(session_id, {"id": file_id, "file_name": file_name,
+                upsert_document({"id": file_id, "file_name": file_name,
                                 "mime_type": f["mime_type"], "modified_time": f["modified_time"]})
-                update_status(session_id, file_id, "processing")
+                update_status(file_id, "processing")
 
                 content = download_file(service, f)
                 if not content:
-                    update_status(session_id, file_id, "failed", error_message="Download failed")
+                    update_status(file_id, "failed", error_message="Download failed")
                     stats["failed_files"] += 1
                     continue
 
                 text = processing_service.extract_text(content, f["mime_type"])
                 if not text.strip():
-                    update_status(session_id, file_id, "failed", error_message="No text extracted")
+                    update_status(file_id, "failed", error_message="No text extracted")
                     stats["failed_files"] += 1
                     continue
 
                 docs = processing_service.chunk_text(text, doc_id=file_id, file_name=file_name)
                 if not docs:
-                    update_status(session_id, file_id, "failed", error_message="No chunks created")
+                    update_status(file_id, "failed", error_message="No chunks created")
                     stats["failed_files"] += 1
                     continue
 
-                vector_store.delete_by_doc_id(session_id, file_id)
-                vector_store.add_documents(session_id, docs, doc_id=file_id)
-                update_status(session_id, file_id, "indexed", chunk_count=len(docs))
+                vector_store.delete_by_doc_id(file_id)
+                vector_store.add_documents(docs, doc_id=file_id)
+                update_status(file_id, "indexed", chunk_count=len(docs))
                 stats["updated_files" if is_update else "new_files"] += 1
-                logger.info(f"Indexed '{file_name}' ({len(docs)} chunks) for {session_id}")
+                logger.info(f"Indexed '{file_name}' ({len(docs)} chunks)")
 
             except Exception as e:
-                logger.error(f"Failed to process '{file_name}' for {session_id}: {e}")
+                logger.error(f"Failed to process '{file_name}': {e}")
                 try:
-                    update_status(session_id, file_id, "failed", error_message=str(e)[:500])
+                    update_status(file_id, "failed", error_message=str(e)[:500])
                 except Exception:
                     pass
                 stats["failed_files"] += 1
 
-        state["files_processed"] = len(files)
-        logger.info(f"Sync complete for {session_id}: {stats}")
+        _sync_state["files_processed"] = len(files)
+        logger.info(f"Sync complete: {stats}")
     finally:
-        state["is_syncing"] = False
-        state["current_file"] = None
+        _sync_state["is_syncing"] = False
+        _sync_state["current_file"] = None
 
     return stats
