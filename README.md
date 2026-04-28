@@ -2,7 +2,7 @@
 
 A full-stack Retrieval-Augmented Generation (RAG) application that connects to your Google Drive, indexes your documents, and lets you ask natural language questions with source citations.
 
-**Demo Mode**: The app ships with 5 pre-indexed sample documents and works out-of-the-box — no Google account or API keys needed to try it. Connect your own Drive for real documents.
+Connect your Google Drive once, sync your documents, and everyone visiting the app can query them — no per-user authentication required.
 
 ---
 
@@ -69,11 +69,11 @@ driverag/
 │   │   ├── models/schemas.py            # Pydantic request/response models
 │   │   ├── core/config.py               # Environment variable settings
 │   │   └── utils/logger.py              # Structured logging
-│   ├── data/                            # Pre-seeded demo data (committed)
-│   │   ├── tokens/demo.json             # Demo session marker
-│   │   ├── faiss_index_demo/            # Pre-built vector index (25 vectors)
-│   │   └── driverag.db                  # SQLite with 5 sample documents
-│   ├── seed_demo.py                     # Script to re-seed demo data
+│   ├── data/                            # Runtime data (gitignored)
+│   │   ├── tokens/                      # OAuth tokens (demo.json)
+│   │   ├── faiss_index_demo/            # FAISS vector index
+│   │   └── driverag.db                  # SQLite document metadata
+│   ├── seed_demo.py                     # Optional: seed sample data locally
 │   ├── requirements.txt
 │   └── .env.example
 │

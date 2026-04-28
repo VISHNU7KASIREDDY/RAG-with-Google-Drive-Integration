@@ -11,9 +11,8 @@ venv/
 *.env.local
 
 
-# Keep seeded data (FAISS index + SQLite) but ignore large caches
-driverag/backend/data/tokens/*.json
-!driverag/backend/data/tokens/demo.json
+driverag/backend/data/
+data/
 
 
 token.json
