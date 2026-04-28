@@ -2,7 +2,7 @@
 
 A full-stack Retrieval-Augmented Generation (RAG) application that connects to your Google Drive, indexes your documents, and lets you ask natural language questions with source citations.
 
-Each user gets an isolated session — their own credentials, document index, and vector store — so the app can be shared with anyone.
+**Demo Mode**: The app ships with 5 pre-indexed sample documents and works out-of-the-box — no Google account or API keys needed to try it. Connect your own Drive for real documents.
 
 ---
 
@@ -20,13 +20,14 @@ Each user gets an isolated session — their own credentials, document index, an
 └──────────────────┘        └───────────────────────────────────────────────┘
 ```
 
-### Sync Pipeline
+### Sync Pipeline (Incremental)
 
 ```
-Google Drive → Download files → Extract text (PyMuPDF) → Chunk → Embed → FAISS
+Google Drive → List files → Compare modified_time → Download ONLY new/changed files → Extract text → Chunk → Embed → FAISS
 ```
 
 Runs in a background thread. The frontend polls `/api/sync-drive/status` for real-time progress.
+Files whose `modified_time` hasn't changed since the last sync are automatically skipped.
 
 ### Query Pipeline
 
@@ -68,10 +69,11 @@ driverag/
 │   │   ├── models/schemas.py            # Pydantic request/response models
 │   │   ├── core/config.py               # Environment variable settings
 │   │   └── utils/logger.py              # Structured logging
-│   ├── data/                            # Runtime data (gitignored)
-│   │   ├── tokens/                      # Per-session OAuth tokens
-│   │   ├── faiss_index_<session_id>/    # Per-session vector indices
-│   │   └── driverag.db                  # SQLite metadata
+│   ├── data/                            # Pre-seeded demo data (committed)
+│   │   ├── tokens/demo.json             # Demo session marker
+│   │   ├── faiss_index_demo/            # Pre-built vector index (25 vectors)
+│   │   └── driverag.db                  # SQLite with 5 sample documents
+│   ├── seed_demo.py                     # Script to re-seed demo data
 │   ├── requirements.txt
 │   └── .env.example
 │
@@ -412,6 +414,180 @@ All endpoints are prefixed with `/api`. Protected endpoints require the `X-Sessi
 |---|---|---|
 | `GET` | `/` | Service info |
 | `GET` | `/health` | Health check with provider details |
+
+---
+
+## Sample Queries and Outputs
+
+The app ships with 5 pre-indexed sample documents. Here are example queries and their actual outputs:
+
+### Query 1: Leave Policy
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/api/ask \
+  -H "Content-Type: application/json" \
+  -H "X-Session-ID: demo" \
+  -d '{"query": "How many annual leave days do employees get?", "top_k": 3}'
+```
+
+**Response:**
+```json
+{
+  "answer": "All full-time employees are entitled to **24 days** of paid annual leave per calendar year. Leave accrues at the rate of 2 days per month from the date of joining. Unused leave can be carried forward up to a maximum of 10 days into the next calendar year. (Source: Company Leave Policy.docx)",
+  "sources": [
+    {
+      "file_name": "Company Leave Policy.docx",
+      "doc_id": "gdoc_company_leave_policy",
+      "chunk_text": "Company Leave Policy — 2025 Edition\n\n1. Annual Leave\nAll full-time employees are entitled to 24 days of paid annual leave per calendar year...",
+      "score": 0.5707
+    }
+  ],
+  "query": "How many annual leave days do employees get?"
+}
+```
+
+---
+
+### Query 2: Project Budget
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/api/ask \
+  -H "Content-Type: application/json" \
+  -H "X-Session-ID: demo" \
+  -d '{"query": "What is the budget for the AI chatbot project?", "top_k": 3}'
+```
+
+**Response:**
+```json
+{
+  "answer": "The total budget for the Q3 AI chatbot project is **$147,200**, broken down as:\n- Cloud Infrastructure (AWS): $2,400/month\n- LLM API Costs: $800/month\n- Development Team: 3 engineers × 12 weeks = $108,000\n(Source: Q3 Project Proposal - AI Chatbot.pdf)",
+  "sources": [
+    {
+      "file_name": "Q3 Project Proposal - AI Chatbot.pdf",
+      "doc_id": "gdoc_project_proposal_q3",
+      "chunk_text": "Timeline\nPhase 1 (Weeks 1-4): Data collection...\n\nBudget Estimate\n- Cloud Infrastructure (AWS): $2,400/month...",
+      "score": 0.4709
+    }
+  ],
+  "query": "What is the budget for the AI chatbot project?"
+}
+```
+
+---
+
+### Query 3: Expense Reimbursement
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/api/ask \
+  -H "Content-Type: application/json" \
+  -H "X-Session-ID: demo" \
+  -d '{"query": "What is the reimbursement limit for hotel stays?", "top_k": 3}'
+```
+
+**Response:**
+```json
+{
+  "answer": "Hotel reimbursement limits are:\n- **Domestic travel**: Up to ₹5,000 per night\n- **International travel**: Up to $150 per night\n(Source: Expense Reimbursement Policy.pdf)",
+  "sources": [
+    {
+      "file_name": "Expense Reimbursement Policy.pdf",
+      "doc_id": "gdoc_expense_reimbursement",
+      "chunk_text": "Expense Reimbursement Policy\n\n1. Eligible Expenses\n...Accommodation: Hotel stays up to ₹5,000/night for domestic travel, $150/night for international travel...",
+      "score": 0.5124
+    }
+  ],
+  "query": "What is the reimbursement limit for hotel stays?"
+}
+```
+
+---
+
+### Query 4: Sprint Retrospective
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/api/ask \
+  -H "Content-Type: application/json" \
+  -H "X-Session-ID: demo" \
+  -d '{"query": "What were the action items from the sprint retrospective?", "top_k": 3}'
+```
+
+**Response:**
+```json
+{
+  "answer": "Action items from the Sprint 23 retrospective (April 14, 2025):\n1. **Arjun**: Break down the payment gateway epic into smaller stories for Sprint 24\n2. **Sneha**: Add unit tests for notification service — target 80% coverage\n3. **Vikram**: Introduce a 10-minute timer for standups\n4. **All**: Adopt docs-as-code — no PR merged without updated API documentation\n(Source: Sprint Retrospective Notes - April 2025.docx)",
+  "sources": [
+    {
+      "file_name": "Sprint Retrospective Notes - April 2025.docx",
+      "doc_id": "gdoc_meeting_notes_apr",
+      "chunk_text": "Action Items\n1. [Arjun] Break down the payment gateway epic...",
+      "score": 0.5341
+    }
+  ],
+  "query": "What were the action items from the sprint retrospective?"
+}
+```
+
+---
+
+### Query 5: Onboarding
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/api/ask \
+  -H "Content-Type: application/json" \
+  -H "X-Session-ID: demo" \
+  -d '{"query": "What tools do new employees need?", "top_k": 3}'
+```
+
+**Response:**
+```json
+{
+  "answer": "New employees need the following tools:\n1. **Slack** — Team communication\n2. **Jira** — Project management and ticket tracking\n3. **Confluence** — Documentation wiki\n4. **GitHub** — Source code repositories\n5. **Figma** — Design files and prototypes\n6. **Google Drive** — Shared documents and spreadsheets\n(Source: New Employee Onboarding Guide.docx)",
+  "sources": [
+    {
+      "file_name": "New Employee Onboarding Guide.docx",
+      "doc_id": "gdoc_onboarding_guide",
+      "chunk_text": "Tools You'll Need\n1. Slack — Team communication...\n6. Google Drive — Shared documents and spreadsheets",
+      "score": 0.4821
+    }
+  ],
+  "query": "What tools do new employees need?"
+}
+```
+
+### Pre-seeded Sample Documents
+
+| # | Document | Type | Chunks |
+|---|---|---|---|
+| 1 | Company Leave Policy.docx | Google Doc | 5 |
+| 2 | Q3 Project Proposal - AI Chatbot.pdf | PDF | 5 |
+| 3 | New Employee Onboarding Guide.docx | Google Doc | 5 |
+| 4 | Sprint Retrospective Notes - April 2025.docx | Google Doc | 4 |
+| 5 | Expense Reimbursement Policy.pdf | PDF | 6 |
+| | **Total** | | **25 chunks** |
+
+---
+
+## Key Features
+
+| Feature | Status | Details |
+|---|---|---|
+| Google Drive OAuth 2.0 | ✅ | PKCE flow, per-session tokens |
+| PDF processing | ✅ | PyMuPDF extraction |
+| Google Docs processing | ✅ | Exported as plain text via Drive API |
+| Plain text processing | ✅ | Direct download |
+| Smart chunking | ✅ | RecursiveCharacterTextSplitter (500 chars, 50 overlap) |
+| Incremental sync | ✅ | Compares `modified_time`, only re-processes changed files |
+| RAG with source citations | ✅ | Top-K similarity search + LLM-generated answers |
+| Multi-LLM support | ✅ | Groq / Gemini / OpenAI switchable via env var |
+| Chat history persistence | ✅ | Survives page refresh (localStorage) |
+| Demo mode | ✅ | 5 pre-indexed docs, works without Google account |
+| Background async sync | ✅ | Non-blocking sync with real-time progress |
+| Clean API design | ✅ | RESTful endpoints with Pydantic validation |
 
 ---
 

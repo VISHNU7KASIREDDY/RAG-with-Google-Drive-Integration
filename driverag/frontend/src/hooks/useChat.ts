@@ -1,16 +1,49 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { Message } from '../types';
 import { askQuestion } from '../api/client';
+
+const STORAGE_KEY = 'driverag_chat_history';
 
 function generateId(): string {
   return `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
+/** Load chat history from localStorage */
+function loadMessages(): Message[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Message[];
+    // Re-hydrate Date objects and drop any stale loading bubbles
+    return parsed
+      .filter((m) => !m.isLoading)
+      .map((m) => ({ ...m, timestamp: new Date(m.timestamp) }));
+  } catch {
+    return [];
+  }
+}
+
+/** Persist chat history to localStorage */
+function saveMessages(messages: Message[]) {
+  try {
+    // Only persist completed messages (not loading placeholders)
+    const toSave = messages.filter((m) => !m.isLoading);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  } catch {
+    /* storage full — silently ignore */
+  }
+}
+
 export function useChat() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(loadMessages);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef(false);
+
+  // Persist to localStorage whenever messages change
+  useEffect(() => {
+    saveMessages(messages);
+  }, [messages]);
 
   const sendMessage = useCallback(async (query: string) => {
     if (!query.trim() || isLoading) return;
@@ -79,6 +112,7 @@ export function useChat() {
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+    localStorage.removeItem(STORAGE_KEY);
     setError(null);
   }, []);
 
