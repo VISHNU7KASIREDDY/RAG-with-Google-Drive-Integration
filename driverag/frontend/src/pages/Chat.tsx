@@ -4,9 +4,9 @@ import { useChat } from '../hooks/useChat';
 import ChatWindow from '../components/ChatWindow';
 
 const EXAMPLES = [
-  { icon: FileSearch,       title: 'Search policies', query: 'What is the refund policy?' },
-  { icon: BookOpen,         title: 'Summarize docs',  query: 'Summarize the key points from the onboarding guide' },
-  { icon: MessageSquareText, title: 'Find info',       query: 'What are the requirements for the project proposal?' },
+  { icon: FileSearch,       title: 'Leave policy', query: 'How many annual leave days do employees get?' },
+  { icon: BookOpen,         title: 'Project budget',  query: 'What is the budget for the AI chatbot project?' },
+  { icon: MessageSquareText, title: 'Expense rules',       query: 'What is the reimbursement limit for hotel stays?' },
 ];
 
 export default function Chat() {

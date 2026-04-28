@@ -1,18 +1,8 @@
 import axios from 'axios';
 import type { SyncResponse, AskResponse, Document, Stats, DeleteResponse } from '../types';
 
-function getOrCreateSessionId(): string {
-  let sessionId = localStorage.getItem('driverag_session_id');
-  if (!sessionId) {
-    sessionId = typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID()
-      : Math.random().toString(36).substring(2) + Date.now().toString(36);
-    localStorage.setItem('driverag_session_id', sessionId);
-  }
-  return sessionId;
-}
-
-export const SESSION_ID = getOrCreateSessionId();
+// Fixed demo session – every visitor shares the same pre-synced Drive data
+export const SESSION_ID = 'demo';
 
 const api = axios.create({
   baseURL: `${import.meta.env.VITE_API_URL || ''}/api`,

@@ -14,10 +14,11 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
+DEMO_SESSION = "demo"
+
+
 def get_session_id(x_session_id: str | None = Header(None)) -> str:
-    if not x_session_id:
-        raise HTTPException(status_code=400, detail="Missing X-Session-ID header")
-    return x_session_id
+    return x_session_id or DEMO_SESSION
 
 
 def _app():

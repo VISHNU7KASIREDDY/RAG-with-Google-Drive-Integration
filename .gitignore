@@ -1,4 +1,4 @@
-# Python
+
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -6,29 +6,31 @@ venv/
 .venv/
 *.egg
 
-# Environment
+
 .env
 *.env.local
 
-# Data (generated at runtime)
-driverag/backend/data/
-data/
 
-# Auth tokens
+# Keep seeded data (FAISS index + SQLite) but ignore large caches
+driverag/backend/data/tokens/*.json
+!driverag/backend/data/tokens/demo.json
+
+
 token.json
 credentials.json
+*.credentials.json
 
-# Node
+
 node_modules/
 dist/
 .vite/
 
-# IDE
+
 .idea/
 .vscode/
 *.swp
 *.swo
 .DS_Store
 
-# Logs
+
 *.log
