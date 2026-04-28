@@ -145,7 +145,7 @@ def download_file(service, file_info: dict) -> Optional[bytes]:
         return None
 
 
-# ── SQLite (single-user, no session_id) ──────────────────────────────────────
+
 
 def _get_db():
     os.makedirs(os.path.dirname(os.path.abspath(settings.database_url)), exist_ok=True)
@@ -156,7 +156,6 @@ def _get_db():
 
 def init_db():
     conn = _get_db()
-    # Drop old multi-tenant table if it exists
     cursor = conn.execute("PRAGMA table_info(documents)")
     columns = [row[1] for row in cursor.fetchall()]
     if columns and "session_id" in columns:

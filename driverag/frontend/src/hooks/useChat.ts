@@ -8,13 +8,11 @@ function generateId(): string {
   return `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
-/** Load chat history from localStorage */
 function loadMessages(): Message[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as Message[];
-    // Re-hydrate Date objects and drop any stale loading bubbles
     return parsed
       .filter((m) => !m.isLoading)
       .map((m) => ({ ...m, timestamp: new Date(m.timestamp) }));
@@ -23,15 +21,11 @@ function loadMessages(): Message[] {
   }
 }
 
-/** Persist chat history to localStorage */
 function saveMessages(messages: Message[]) {
   try {
-    // Only persist completed messages (not loading placeholders)
     const toSave = messages.filter((m) => !m.isLoading);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-  } catch {
-    /* storage full — silently ignore */
-  }
+  } catch { /* */ }
 }
 
 export function useChat() {
@@ -40,7 +34,6 @@ export function useChat() {
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef(false);
 
-  // Persist to localStorage whenever messages change
   useEffect(() => {
     saveMessages(messages);
   }, [messages]);
